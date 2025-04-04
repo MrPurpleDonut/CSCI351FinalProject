@@ -34,7 +34,7 @@ func main() {
 		return
 	}
 	defer file.Close()
-	rand.Seed(10) //Just something to see with
+	rand.Seed(10) //Just something to seed with
 
 	for range length {
 		city := cities[rand.Intn(len(cities))]
