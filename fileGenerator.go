@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"strconv"
@@ -37,9 +38,10 @@ func main() {
 	rand.Seed(10) //Just something to seed with
 
 	for range length {
-		city := cities[rand.Intn(len(cities))]
-		negative := rand.Intn(2) == 1
-		firstTwoDigits := rand.Intn(100)
+		cityNum := rand.Intn(len(cities))
+		city := cities[cityNum]
+		negative := rand.Intn(2+cityNum%3) == 1
+		firstTwoDigits := rand.Intn(int(60 + 20*math.Sin(float64(cityNum))))
 		lastDigit := rand.Intn(10)
 
 		negativeSign := "-"
