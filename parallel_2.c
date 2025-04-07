@@ -33,14 +33,13 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
+	double startTime = omp_get_wtime();
 	fseek(file, 0, SEEK_END);
 	long fileSize = ftell(file);
-	fseek(file, 0, SEEK_SET);
 	fclose(file);
 	long chunkSize = fileSize / NUM_THREADS;
 	omp_set_num_threads(NUM_THREADS);
 
-	double startTime = omp_get_wtime();
 	City cities[NUM_CITIES];
 	for(int i = 0; i < NUM_CITIES; i++){
 		cities[i].count = 0;
@@ -48,6 +47,9 @@ int main(int argc, char* argv[]) {
 	#pragma omp parallel
 	{
 		City localCities[NUM_CITIES]; 
+		for(int i = 0; i < NUM_CITIES; i++){
+			localCities[i].count = 0;
+		}
 		int id = omp_get_thread_num();
 		long start = id*chunkSize;
 		long end = (id+1)*chunkSize;
@@ -97,7 +99,7 @@ int main(int argc, char* argv[]) {
 			for(int i = 0; i < NUM_CITIES; i++){
 				if(cities[i].count == 0){
 					snprintf(cities[i].name, sizeof(cities[i].name), "%s", localCities[i].name);
-					cities[i].count = localCities[i].count+1;
+					cities[i].count = localCities[i].count;
 					cities[i].lowest = localCities[i].lowest;
 					cities[i].highest = localCities[i].highest;
 					cities[i].sum = localCities[i].sum;
