@@ -1,0 +1,101 @@
+Albuquerque: -50.9/8.6/50.9
+Anaheim: -39.9/6.2/39.9
+Anchorage: -75.9/18.4/75.9
+Arlington: -39.9/6.8/39.9
+Atlanta: -64.9/16.4/64.9
+Aurora: -66.9/16.4/66.9
+Austin: -48.9/7.8/48.9
+Bakersfield: -72.9/-0.3/72.9
+Baltimore: -45.9/11.6/45.9
+Baton Rouge: -72.9/18.4/72.9
+Birmingham: -39.9/-0.1/39.9
+Boise: -66.9/11.5/66.9
+Boston: -77.9/19.6/77.9
+Buffalo: -78.9/19.5/78.9
+Chandler: -51.9/0.1/51.9
+Charlotte: -72.9/-0.1/72.9
+Chesapeake: -43.9/10.7/43.9
+Chicago: -77.9/19.6/77.9
+Chula Vista: -45.9/7.6/45.9
+Cincinnati: -77.9/13.6/77.9
+Cleveland: -53.9/13.7/53.9
+Colorado Springs: -78.9/0.5/78.9
+Columbus: -67.9/11.4/67.9
+Corpus Christi: -67.9/0.1/67.9
+Dallas: -78.9/19.9/78.9
+Denver: -43.9/-0.1/43.9
+Detroit: -42.9/11.1/42.9
+Durham: -69.9/0.4/69.9
+El Paso: -75.9/-0.5/75.9
+Fort Wayne: -70.9/11.8/70.9
+Fort Worth: -48.9/0.1/48.9
+Fremont: -54.9/9.1/54.9
+Fresno: -78.9/0.4/78.9
+Garland: -76.9/19.1/76.9
+Gilbert: -55.9/9.3/55.9
+Glendale: -42.9/-0.2/42.9
+Greensboro: -41.9/7.1/41.9
+Henderson: -58.9/0.2/58.9
+Hialeah: -59.9/10.1/59.9
+Honolulu: -47.9/-0.1/47.9
+Houston: -61.9/-0.2/61.9
+Indianapolis: -53.9/9.0/53.9
+Irvine: -39.9/9.9/39.9
+Irving: -61.9/10.2/61.9
+Jacksonville: -39.9/10.0/39.9
+Jersey City: -39.9/9.9/39.9
+Kansas City: -50.9/12.6/50.9
+Laredo: -46.9/0.1/46.9
+Las Vegas: -74.9/19.2/74.9
+Lexington: -71.9/18.3/71.9
+Lincoln: -78.9/20.1/78.9
+Long Beach: -39.9/-0.0/39.9
+Los Angeles: -75.9/12.2/75.9
+Louisville: -64.9/10.9/64.9
+Lubbock: -73.9/-0.3/73.9
+Madison: -65.9/11.0/65.9
+Memphis: -78.9/-0.1/78.9
+Mesa: -46.9/8.2/46.9
+Miami: -42.9/7.0/42.9
+Milwaukee: -39.9/-0.2/39.9
+Minneapolis: -76.9/0.1/76.9
+Nashville: -58.9/9.5/58.9
+New Orleans: -43.9/0.2/43.9
+New York: -59.9/-0.1/59.9
+Newark: -56.9/0.1/56.9
+Norfolk: -78.9/20.0/78.9
+North Las Vegas: -40.9/-0.1/40.9
+Oakland: -59.9/15.0/59.9
+Oklahoma City: -40.9/-0.1/40.9
+Omaha: -40.9/-0.2/40.9
+Orlando: -64.9/0.0/64.9
+Philadelphia: -39.9/10.1/39.9
+Phoenix: -43.9/7.5/43.9
+Pittsburgh: -44.9/11.2/44.9
+Plano: -41.9/10.6/41.9
+Portland: -56.9/9.1/56.9
+Raleigh: -55.9/13.6/55.9
+Richmond: -78.9/-0.3/78.9
+Riverside: -78.9/13.3/78.9
+Sacramento: -69.9/11.2/69.9
+Saint Paul: -62.9/-0.4/62.9
+San Antonio: -53.9/-0.0/53.9
+San Bernardino: -47.9/12.0/47.9
+San Diego: -72.9/12.1/72.9
+San Francisco: -78.9/19.9/78.9
+San Jose: -67.9/0.2/67.9
+Santa Ana: -48.9/12.2/48.9
+Scottsdale: -76.9/0.8/76.9
+Seattle: -39.9/9.9/39.9
+St. Louis: -52.9/0.2/52.9
+St. Petersburg: -50.9/8.3/50.9
+Stockton: -39.9/6.8/39.9
+Tampa: -78.9/13.3/78.9
+Toledo: -74.9/12.6/74.9
+Tucson: -70.9/17.4/70.9
+Tulsa: -77.9/12.9/77.9
+Virginia Beach: -73.9/12.1/73.9
+Washington: -61.9/10.2/61.9
+Wichita: -61.9/15.5/61.9
+Winston-Salem: -40.9/10.4/40.9
+Time: 0.542969 seconds
