@@ -41,9 +41,7 @@ int main(int argc, char* argv[]) {
 	omp_set_num_threads(NUM_THREADS);
 
 	City cities[NUM_CITIES];
-	for(int i = 0; i < NUM_CITIES; i++){
-		cities[i].count = 0;
-	}
+	memset(cities, 0, NUM_CITIES*sizeof(City));
 	#pragma omp parallel
 	{
 		City localCities[NUM_CITIES]; 

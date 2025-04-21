@@ -36,9 +36,7 @@ int main(int argc, char* argv[]) {
 	double startTime = omp_get_wtime();
 	char buffer[25];//Max size for city name is 16
 	City cities[NUM_CITIES];
-	for(int i = 0; i < NUM_CITIES; i++){
-		cities[i].count = 0;
-	}
+	memset(cities, 0, NUM_CITIES*sizeof(City));
 	while(fgets(buffer, sizeof(buffer), file) != NULL){
 		buffer[strcspn(buffer, "\n")] = 0;
 		char* name = strtok(buffer, ";");

@@ -42,9 +42,7 @@ int main(int argc, char* argv[]) {
 
 	double startTime = omp_get_wtime();
 	City cities[NUM_CITIES];
-	for(int i = 0; i < NUM_CITIES; i++){
-		cities[i].count = 0;
-	}
+	memset(cities, 0, NUM_CITIES*sizeof(City));
 	#pragma omp parallel
 	{
 		int id = omp_get_thread_num();
