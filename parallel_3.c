@@ -2,201 +2,231 @@
 #include <stdlib.h>
 #include <string.h>
 #include <omp.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
-#define MAX_LINE_LEN 128
-#define QUEUE_SIZE 1024
-
-static int NUM_CITIES = 100;
+#define MAX_CITIES       100
+#define MAX_NAME_LENGTH  20
 static int NUM_THREADS = 8;
-
+// Holds statistics for one city.
 typedef struct {
-    char name[20];
-    double lowest;
-    double highest;
-    double sum;
-    int count;
+char   name[MAX_NAME_LENGTH];
+double lowest;
+double highest;
+double sum;
+int    count;
 } City;
 
-// Thread-safe queue for lines
-typedef struct {
-    char lines[QUEUE_SIZE][MAX_LINE_LEN];
-    int head;
-    int tail;
-    int done;
-    omp_lock_t lock;
-} LineQueue;
-
-void initQueue(LineQueue *q) {
-    q->head = 0;
-    q->tail = 0;
-    q->done = 0;
-    omp_init_lock(&q->lock);
-}
-
-void destroyQueue(LineQueue *q) {
-    omp_destroy_lock(&q->lock);
-}
-
-int enqueue(LineQueue *q, const char *line) {
-    int success = 0;
-    omp_set_lock(&q->lock);
-    int next = (q->tail + 1) % QUEUE_SIZE;
-    if (next != q->head) { // Queue not full
-        strncpy(q->lines[q->tail], line, MAX_LINE_LEN);
-        q->lines[q->tail][MAX_LINE_LEN-1] = '\0';
-        q->tail = next;
-        success = 1;
-    }
-    omp_unset_lock(&q->lock);
-    return success;
-}
-
-int dequeue(LineQueue *q, char *lineOut) {
-    int success = 0;
-    omp_set_lock(&q->lock);
-    if (q->head != q->tail) { // Queue not empty
-        strncpy(lineOut, q->lines[q->head], MAX_LINE_LEN);
-        lineOut[MAX_LINE_LEN-1] = '\0';
-        q->head = (q->head + 1) % QUEUE_SIZE;
-        success = 1;
-    }
-    omp_unset_lock(&q->lock);
-    return success;
-}
-
 int compareCities(const void *a, const void *b) {
-    City *cityA = (City *)a;
-    City *cityB = (City *)b;
-    return strcmp(cityA->name, cityB->name);
+const City *cityA = (const City *) a;
+const City *cityB = (const City *) b;
+return strcmp(cityA->name, cityB->name);
 }
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "File name needed\n");
-        return 1;
+static void mergeCityData(City *dest, const City *src) {
+if (dest->count == 0) {
+    *dest = *src;
+} else {
+    dest->count += src->count;
+    dest->sum += src->sum;
+    if (src->lowest < dest->lowest) {
+        dest->lowest = src->lowest;
     }
-
-    FILE *file = fopen(argv[1], "r");
-    if (file == NULL) {
-        fprintf(stderr, "Error reading file\n");
-        return 1;
+    if (src->highest > dest->highest) {
+            dest->highest = src->highest;
+        }
     }
+}
 
-    double startTime = omp_get_wtime();
-    omp_set_num_threads(NUM_THREADS);
+int main(int argc, char *argv[]) {
+if (argc < 2) {
+    fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
+    return 1;
+}
 
-    City cities[NUM_CITIES];
-    memset(cities, 0, sizeof(cities));
+// 1) Open file
+int fd = open(argv[1], O_RDONLY);
+if (fd < 0) {
+    perror("open");
+    return 1;
+}
 
-    LineQueue queue;
-    initQueue(&queue);
+// 2) Get file size
+struct stat sb;
+if (fstat(fd, &sb) < 0) {
+    perror("fstat");
+    close(fd);
+    return 1;
+}
+size_t fsize = sb.st_size;
+if (fsize == 0) {
+    fprintf(stderr, "File is empty.\n");
+    close(fd);
+    return 1;
+}
 
-    #pragma omp parallel
-    {
-        int id = omp_get_thread_num();
-        if (id == 0) {
-            // Reader thread
-            char buffer[MAX_LINE_LEN];
-            while (fgets(buffer, sizeof(buffer), file)) {
-                buffer[strcspn(buffer, "\n")] = 0; // remove newline
-                // Wait until the line is queued
-                while (!enqueue(&queue, buffer)) {
-                    // Busy-wait if queue is full
-                    #pragma omp flush
+omp_set_num_threads(NUM_THREADS);
+
+double startTime = omp_get_wtime();
+char *fileData = mmap(NULL, fsize, PROT_READ, MAP_PRIVATE, fd, 0);
+if (fileData == MAP_FAILED) {
+    perror("mmap");
+    close(fd);
+    return 1;
+}
+close(fd);
+
+
+size_t capacity = 10000;
+size_t *offsets = (size_t*)malloc(capacity * sizeof(size_t));
+if (!offsets) {
+    fprintf(stderr, "Malloc error\n");
+    munmap(fileData, fsize);
+    return 1;
+}
+
+size_t lineCount = 0;
+offsets[lineCount++] = 0;
+
+for (size_t i = 0; i < fsize; i++) {
+    if (fileData[i] == '\n') {
+        size_t nextPos = i + 1;
+        if (nextPos < fsize) {
+            if (lineCount >= capacity) {
+                capacity *= 2;
+                offsets = realloc(offsets, capacity * sizeof(size_t));
+                if (!offsets) {
+                    fprintf(stderr, "Realloc error\n");
+                    munmap(fileData, fsize);
+                    return 1;
                 }
             }
-            fclose(file);
-            omp_set_lock(&queue.lock);
-            queue.done = 1; // signal done
-            omp_unset_lock(&queue.lock);
-        } else {
-            // Worker threads
-            City localCities[NUM_CITIES];
-            memset(localCities, 0, sizeof(localCities));
+            offsets[lineCount++] = nextPos;
+        }
+    }
+}
 
-            char line[MAX_LINE_LEN];
-            while (1) {
-                int gotLine = dequeue(&queue, line);
-                if (!gotLine) {
-                    omp_set_lock(&queue.lock);
-                    int finished = queue.done && (queue.head == queue.tail);
-                    omp_unset_lock(&queue.lock);
-                    if (finished) break;
-                    continue; // Nothing now, try again
-                }
+int nThreads = 1;
+#pragma omp parallel
+{
+    nThreads = omp_get_num_threads();
+}
+City *cityDataPerThread = calloc(nThreads * MAX_CITIES, sizeof(City));
+if (!cityDataPerThread) {
+    fprintf(stderr, "Calloc error\n");
+    munmap(fileData, fsize);
+    free(offsets);
+    return 1;
+}
 
-                char* saveptr;
-                char* name = strtok_r(line, ";", &saveptr);
-                double val = atof(strtok_r(NULL, ";", &saveptr));
 
-                for (int i = 0; i < NUM_CITIES; i++) {
-                    if (localCities[i].count == 0) {
-                        snprintf(localCities[i].name, sizeof(localCities[i].name), "%s", name);
-                        localCities[i].count = 1;
-                        localCities[i].lowest = val;
-                        localCities[i].highest = val;
-                        localCities[i].sum = val;
-                        break;
-                    }
-                    if (strcmp(localCities[i].name, name) == 0) {
-                        localCities[i].count++;
-                        localCities[i].sum += val;
-                        if (val < localCities[i].lowest) localCities[i].lowest = val;
-                        if (val > localCities[i].highest) localCities[i].highest = val;
-                        break;
-                    }
-                }
+#pragma omp parallel 
+{
+    int tid = omp_get_thread_num();
+    City *localCities = cityDataPerThread + tid * MAX_CITIES;
+
+    size_t chunkSize  = lineCount / nThreads;
+    size_t startLine  = tid * chunkSize;
+    size_t endLine    = (tid == nThreads - 1) ? lineCount : (tid + 1)*chunkSize;
+
+    for (size_t i = startLine; i < endLine; i++) {
+        size_t offset = offsets[i];
+        if (offset >= fsize) {
+            continue;
+        }
+
+        size_t lineEnd = (i + 1 < lineCount) ? offsets[i + 1] - 1 : fsize;
+        if (lineEnd <= offset) {
+            continue;
+        }
+
+        size_t length = lineEnd - offset;
+        if (length == 0) {
+            continue; // blank line
+        }
+
+        char lineBuf[128];
+        if (length >= sizeof(lineBuf)) {
+            continue;
+        }
+        memcpy(lineBuf, fileData + offset, length);
+        lineBuf[length] = '\0';
+
+        char *name   = strtok(lineBuf, ";");
+        char *valStr = strtok(NULL, ";");
+        if (!name || !valStr) {
+            continue;
+        }
+        double val = atof(valStr);
+
+        int updated = 0;
+        for (int c = 0; c < MAX_CITIES; c++) {
+            if (localCities[c].count == 0) {
+                strncpy(localCities[c].name, name, MAX_NAME_LENGTH - 1);
+                localCities[c].name[MAX_NAME_LENGTH - 1] = '\0';
+                localCities[c].lowest = val;
+                localCities[c].highest= val;
+                localCities[c].sum    = val;
+                localCities[c].count  = 1;
+                updated = 1;
+                break;
             }
-
-            // Merge localCities into global cities
-            #pragma omp critical
-            {
-                for (int i = 0; i < NUM_CITIES; i++) {
-                    if (localCities[i].count == 0) continue;
-                    int found = 0;
-                    for (int j = 0; j < NUM_CITIES; j++) {
-                        if (cities[j].count == 0) {
-                            snprintf(cities[j].name, sizeof(cities[j].name), "%s", localCities[i].name);
-                            cities[j].count = localCities[i].count;
-                            cities[j].lowest = localCities[i].lowest;
-                            cities[j].highest = localCities[i].highest;
-                            cities[j].sum = localCities[i].sum;
-                            found = 1;
-                            break;
-                        }
-                        if (strcmp(cities[j].name, localCities[i].name) == 0) {
-                            cities[j].count += localCities[i].count;
-                            cities[j].sum += localCities[i].sum;
-                            if (localCities[i].lowest < cities[j].lowest) cities[j].lowest = localCities[i].lowest;
-                            if (localCities[i].highest > cities[j].highest) cities[j].highest = localCities[i].highest;
-                            found = 1;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        fprintf(stderr, "Error: too many cities\n");
-                        exit(1);
-                    }
+            if (strcmp(localCities[c].name, name) == 0) {
+                localCities[c].count++;
+                localCities[c].sum += val;
+                if (val < localCities[c].lowest) {
+                    localCities[c].lowest = val;
                 }
+                if (val > localCities[c].highest) {
+                    localCities[c].highest = val;
+                }
+                updated = 1;
+                break;
             }
         }
     }
+}  
 
-    destroyQueue(&queue);
+City globalCities[MAX_CITIES];
+memset(globalCities, 0, sizeof(globalCities));
 
-    qsort(cities, NUM_CITIES, sizeof(City), compareCities);
-
-    for (int i = 0; i < NUM_CITIES; i++) {
-        if (cities[i].count > 0) {
-            printf("%s: %.1f/%.1f/%.1f\n", cities[i].name,
-                cities[i].lowest,
-                cities[i].sum / cities[i].count,
-                cities[i].highest);
+for (int t = 0; t < nThreads; t++) {
+    City *localCities = cityDataPerThread + t * MAX_CITIES;
+    for (int c = 0; c < MAX_CITIES; c++) {
+        if (localCities[c].count == 0) {
+            continue;
+        }
+        for (int g = 0; g < MAX_CITIES; g++) {
+            if (globalCities[g].count == 0) {
+                globalCities[g] = localCities[c];
+                break;
+            }
+            if (strcmp(globalCities[g].name, localCities[c].name) == 0) {
+                mergeCityData(&globalCities[g], &localCities[c]);
+                break;
+            }
         }
     }
+}
 
-    double endTime = omp_get_wtime();
-    printf("Time: %f seconds\n", endTime - startTime);
+qsort(globalCities, MAX_CITIES, sizeof(City), compareCities);
+for (int i = 0; i < MAX_CITIES; i++) {
+    if (globalCities[i].count == 0) {
+        continue;
+    }
+    double avg = globalCities[i].sum / globalCities[i].count;
+    printf("%s: %.1f / %.1f / %.1f\n",
+           globalCities[i].name, globalCities[i].lowest, avg, globalCities[i].highest);
+}
 
-    return 0;
+double endTime = omp_get_wtime();
+printf("Time: %f seconds\n", endTime - startTime);
+
+munmap(fileData, fsize);
+free(offsets);
+free(cityDataPerThread);
+
+return 0;
 }
